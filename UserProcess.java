@@ -359,6 +359,74 @@ public class UserProcess {
 			return -1;
 	}
 	
+	private int handleOpen(int stringAddress){
+		if(readVirtualMemoryString(stringAddress, maxStrLength) == null)
+			return -1;
+		int fd = findOpen();
+		if(fd != -1){
+			fileTable[fd] = ThreadedKernel.fileSystem.open(readVirtualMemoryString(stringAddress, maxStrLength), false);
+			if(fileTable[fd] == null)
+				return -1;
+			return fd;
+		}
+		else
+			return -1;
+	}
+	
+	private int handleRead(int fileDescriptor, int bufferAddress, int length){
+		if(fileDescriptor > 15 || fileDescriptor < 0 || fileTable[fileDescriptor] == null)
+			return 0;
+		byte[] a = new byte[length];
+		int amountRead = fileTable[fileDescriptor].read(a, 0, length);
+		if(amountRead <= 0)
+			return 0;
+		return this.writeVirtualMemory(bufferAddress, a, 0, amountRead);
+	}
+	
+	private int handleWrite(int fileDescriptor, int bufferAddress, int count){
+		if (fileDescriptor>15 || fileDescriptor < 0 || fileTable[fileDescriptor]==null) 
+			return 0;
+		byte[] dataToWrite = new byte[count];
+		int amountRead = readVirtualMemory(bufferAddress,dataToWrite,0, count);
+		if(amountRead != count) 
+			return 0;
+		return fileTable[fileDescriptor].write(dataToWrite, 0, count);
+	}
+	
+	private int handleClose(int fileDescriptor){
+		if (fileDescriptor>15 || fileDescriptor < 0) 
+			return -1;
+		OpenFile f = fileTable[fileDescriptor];
+		if (f==null) 
+			return -1;
+		f.close();
+		fileTable[fileDescriptor]=null;
+		return 0;
+	}
+	
+	private int handleUnlink(int stringAddress){
+		String s = readVirtualMemoryString(stringAddress, maxStrLength);
+    	if (ThreadedKernel.fileSystem.remove(s))
+    		return 0;
+    	else 
+    		return -1;
+	}
+	
+	private int handleExit(int exitStatus) {
+		coff.close();
+		for (int i =0; i <fileTable.length;i++){
+			if (fileTable[i]!=null) {
+				fileTable[i].close();
+				fileTable[i]=null;
+			}
+		}
+		this.status=exitStatus;
+		unloadSections();
+		KThread.finish();
+		
+		return 0;
+	}
+	
 	public int findOpen(){
 		for(int i = 0; i < fileTable.length; i++){
 			if(fileTable[i] == null) 
@@ -411,8 +479,21 @@ public class UserProcess {
 		switch (syscall) {
 		case syscallHalt:
 			return handleHalt();
-
-
+		case syscallCreate:
+			return handleCreate(a0);
+		case syscallOpen:
+			return handleOpen(a0);
+		case syscallRead:
+			return handleRead(a0, a1, a2);
+		case syscallWrite:
+			return handleWrite(a0, a1, a2);
+		case syscallClose:
+			return handleClose(a0);
+		case syscallUnlink:
+			return handleUnlink(a0);
+		case syscallExit:
+			return handleExit(a0);
+			
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			Lib.assertNotReached("Unknown system call!");
@@ -469,6 +550,5 @@ public class UserProcess {
 	
 	private static int maxStrLength = 256;
 	private OpenFile[] fileTable = new OpenFile[16];
-	
-	
+	private int status = 0;
 }
