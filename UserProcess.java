@@ -346,11 +346,11 @@ public class UserProcess {
 		return 0;
 	}
 
-	private int handleCreate(int stringAddr){
-		if(readVirtualMemoryString(stringAddr, maxStrLength) == null) return -1;
+	private int handleCreate(int stringAddress){
+		if(readVirtualMemoryString(stringAddress, maxStrLength) == null) return -1;
 		int fd = findOpen();
 		if(fd != -1){
-			fileTable[fd] = ThreadedKernel.fileSystem.open(readVirtualMemoryString(stringAddr, maxStrLength), false);
+			fileTable[fd] = ThreadedKernel.fileSystem.open(readVirtualMemoryString(stringAddress, maxStrLength), false);
 			if(fileTable[fd] == null) 
 				return -1;
 			return fd;
@@ -359,12 +359,12 @@ public class UserProcess {
 			return -1;
 	}
 	
-	private int handleOpen(int stringAddr){
-		if(readVirtualMemoryString(stringAddr, maxStrLength) == null)
+	private int handleOpen(int stringAddress){
+		if(readVirtualMemoryString(stringAddress, maxStrLength) == null)
 			return -1;
 		int fd = findOpen();
 		if(fd != -1){
-			fileTable[fd] = ThreadedKernel.fileSystem.open(readVirtualMemoryString(stringAddr, maxStrLength), false);
+			fileTable[fd] = ThreadedKernel.fileSystem.open(readVirtualMemoryString(stringAddress, maxStrLength), false);
 			if(fileTable[fd] == null)
 				return -1;
 			return fd;
@@ -373,21 +373,21 @@ public class UserProcess {
 			return -1;
 	}
 	
-	private int handleRead(int fileDescriptor, int bufferAddr, int length){
+	private int handleRead(int fileDescriptor, int bufferAddress, int length){
 		if(fileDescriptor > 15 || fileDescriptor < 0 || fileTable[fileDescriptor] == null)
 			return 0;
 		byte[] a = new byte[length];
 		int amountRead = fileTable[fileDescriptor].read(a, 0, length);
 		if(amountRead <= 0)
 			return 0;
-		return this.writeVirtualMemory(bufferAddr, a, 0, amountRead);
+		return this.writeVirtualMemory(bufferAddress, a, 0, amountRead);
 	}
 	
-	private int handleWrite(int fileDescriptor, int bufferAddr, int count){
+	private int handleWrite(int fileDescriptor, int bufferAddress, int count){
 		if (fileDescriptor>15 || fileDescriptor < 0 || fileTable[fileDescriptor]==null) 
 			return 0;
 		byte[] dataToWrite = new byte[count];
-		int amountRead = readVirtualMemory(bufferAddr, dataToWrite, 0, count);
+		int amountRead = readVirtualMemory(bufferAddress,dataToWrite,0, count);
 		if(amountRead != count) 
 			return 0;
 		return fileTable[fileDescriptor].write(dataToWrite, 0, count);
@@ -404,8 +404,8 @@ public class UserProcess {
 		return 0;
 	}
 	
-	private int handleUnlink(int stringAddr){
-		String s = readVirtualMemoryString(stringAddr, maxStrLength);
+	private int handleUnlink(int stringAddress){
+		String s = readVirtualMemoryString(stringAddress, maxStrLength);
     	if (ThreadedKernel.fileSystem.remove(s))
     		return 0;
     	else 
